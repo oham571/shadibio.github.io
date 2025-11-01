@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>मराठी विवाह बायोडाटा मेकर</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&family=Mukta:wght@400;700&family=Tiro+Devanagari+Marathi:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lazysizes/5.3.2/lazysizes.min.js" integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bUm/ia8JZZJBHzryUgKfkEcOD4IuRO7LkB2lqMmQKL/K3wXg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+    <div id="app">
+        <header class="hidden">
+            <h1>मराठी विवाह बायोडाटा मेकर</h1>
+            <div id="user-info">
+                <span id="user-email"></span>
+                <button id="logout-btn">लॉगआउट</button>
+            </div>
+        </header>
+
+        <div id="loader" class="hidden"><div class="spinner"></div></div>
+        <div id="toast" class="hidden"></div>
+
+        <!-- Landing Section -->
+        <section id="landing-section">
+            <h1 style="text-align:center; font-size: 2.5rem; color: var(--secondary-color);">तुमचा परिपूर्ण विवाह बायोडाटा तयार करा</h1>
+            <p style="text-align:center; font-size: 1.2rem;">जलद, सोपे आणि व्यावसायिक बायोडाटा काही मिनिटांत बनवा.</p>
+            <div style="text-align:center; margin-top: 2rem;">
+                <button class="btn btn-primary" onclick="showAuth('login')">लॉगिन</button>
+                <button class="btn btn-secondary" onclick="showAuth('signup')">नवीन खाते तयार करा</button>
+            </div>
+        </section>
+
+        <!-- Auth Modal -->
+        <div id="auth-modal" class="hidden">
+            <div id="auth-container">
+                <button onclick="hideAuth()" style="float:right; background:none; border:none; font-size:1.5rem;">&times;</button>
+                <div id="login-form">
+                    <h2>लॉगिन</h2>
+                    <div class="form-group">
+                        <label for="login-email">ईमेल</label>
+                        <input type="email" id="login-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">पासवर्ड</label>
+                        <input type="password" id="login-password" required>
+                        <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility('login-password')"></i>
+                    </div>
+                    <button class="btn btn-primary" onclick="loginWithEmail()">लॉगिन</button>
+                    <p style="text-align:center; margin: 1rem 0;">किंवा</p>
+                    <button class="btn btn-google" onclick="loginWithGoogle()"><i class="fab fa-google"></i> Google ने लॉगिन करा</button>
+                    <p style="text-align:center; margin-top: 1rem;">खाते नाही? <a href="#" onclick="toggleAuthForm('signup')">नोंदणी करा</a></p>
+                </div>
+                <div id="signup-form" class="hidden">
+                    <h2>नोंदणी</h2>
+                    <div class="form-group">
+                        <label for="signup-email">ईमेल</label>
+                        <input type="email" id="signup-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">पासवर्ड</label>
+                        <input type="password" id="signup-password" required>
+                        <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility('signup-password')"></i>
+                    </div>
+                     <div class="form-group">
+                        <label for="signup-confirm-password">पासवर्डची पुष्टी करा</label>
+                        <input type="password" id="signup-confirm-password" required>
+                         <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility('signup-confirm-password')"></i>
+                    </div>
+                    <button class="btn btn-primary" onclick="signupWithEmail()">नोंदणी</button>
+                     <p style="text-align:center; margin-top: 1rem;">आधीपासूनच खाते आहे? <a href="#" onclick="toggleAuthForm('login')">लॉगिन करा</a></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard-section" class="hidden">
+            <h2>डॅशबोर्ड</h2>
+            <button class="btn btn-primary" onclick="showBiodataForm()">नवीन बायोडाटा तयार करा</button>
+            <div id="my-biodatas-section" style="margin-top: 2rem;">
+                <h3><i class="fas fa-file-alt"></i> माझे जतन केलेले बायोडाटा</h3>
+                <div id="biodatas-list"></div>
+            </div>
+        </section>
+
+        <!-- Biodata Form Section -->
+        <section id="biodata-form-section" class="hidden">
+            <h2>बायोडाटा तयार करा</h2>
+            <div id="step-indicator"></div>
+            <form id="biodata-form">
+                <!-- Steps will be injected here by JS -->
+            </form>
+            <div id="form-navigation">
+                <button class="btn btn-secondary" id="prev-step-btn" onclick="navigateStep(-1)">मागे</button>
+                <button class="btn btn-primary" id="next-step-btn" onclick="navigateStep(1)">पुढे</button>
+                <button class="btn btn-primary hidden" id="finish-btn" onclick="finishForm()">पूर्ण झाले</button>
+            </div>
+             <button class="btn btn-secondary" onclick="showDashboard()" style="margin-top: 1rem;">डॅशबोर्डवर परत जा</button>
+        </section>
+
+        <!-- Template and Preview Section -->
+        <section id="preview-section" class="hidden">
+            <h2>टेम्पलेट निवडा आणि पूर्वावलोकन करा</h2>
+            <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h3><i class="fas fa-palette"></i> टेम्पलेट लायब्ररी</h3>
+                    <div id="template-gallery"></div>
+                     <div id="action-buttons" style="margin-top: 2rem; text-align: center;">
+                        <button class="btn btn-primary" onclick="downloadAsImage()"><i class="fas fa-download"></i> इमेज डाउनलोड करा</button>
+                        <button class="btn btn-primary" onclick="downloadAsPDF()"><i class="fas fa-file-pdf"></i> PDF डाउनलोड करा</button>
+                        <button class="btn btn-success" onclick="shareOnWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp वर शेअर करा</button>
+                        <button class="btn btn-secondary" id="save-update-btn" onclick="saveBiodata()"><i class="fas fa-save"></i> बायोडाटा जतन करा</button>
+                    </div>
+                </div>
+                <div style="flex: 2; min-width: 400px;">
+                    <h3><i class="fas fa-eye"></i> थेट पूर्वावलोकन</h3>
+                    <div id="preview-area">
+                        <div id="biodata-preview-content">
+                            <!-- Biodata preview will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-secondary" onclick="showBiodataForm(true)" style="margin-top: 1rem;">माहिती संपादित करा</button>
+        </section>
+
+    </div>
+
+    <script>
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDnmKEC-lUeregRbVApn9Nds6tp1Wzk83Y",
+            authDomain: "photo-lab-40502.firebaseapp.com",
+            databaseURL: "https://photo-lab-40502-default-rtdb.firebaseio.com",
+            projectId: "photo-lab-40502",
+            storageBucket: "photo-lab-40502.appspot.com",
+            messagingSenderId: "488617500681",
+            appId: "1:488617500681:web:a216b471b3711f469458d8",
+            measurementId: "G-QR69RZN3VY"
+        };
+
+        // --- Airtable Configuration ---
+        const airtableApiKey = "pataTV6oUNAwJHZs5.a5fe7361f6cdfb2e33f478614687cf16ec76acd52172f8a73e4048ed0a309353";
+        const airtableBaseId = "app0hFVKtCKdSmTpk";
+        const airtableTableName = "bc";
+
+        // --- Initialize Firebase ---
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+        // --- Global Variables ---
+        let currentUser = null;
+        let currentBiodataId = null;
+        let formData = { 'आवडत्या-देवतेचे-नाव': 'श्री गणेशाय नमः', photoBase64: null };
+        let currentStep = 0;
+        let airtableTemplates = [];
+        let selectedTemplate = '';
+        let selectedTemplateUrl = '';
+        const optionalFields = ['गोत्र', 'पदवी', 'आवडत्या देवतेचे नाव'];
+        const formSteps = [
+            { name: "वैयक्तिक माहिती", fields: ["पूर्ण नाव", "जन्मतारीख", "उंची", "जन्मस्थळ", "गोत्र", "राशी"] },
+            { name: "शिक्षण", fields: ["शिक्षणाचा तपशील", "पदवी", "शाळा/कॉलेज नाव"] },
+            { name: "व्यवसाय", fields: ["नोकरी/व्यवसाय"] },
+            { name: "कौटुंबिक माहिती", fields: ["वडिलांचे नाव व व्यवसाय", "आईचे नाव", "भावंडे (संख्या व तपशील)", "मामेकूळ"] },
+            { name: "इतर माहिती", fields: ["आवडत्या देवतेचे नाव"] },
+            { name: "संपर्क आणि फोटो", fields: ["मोबाइल/वॉट्सअप नंबर", "पत्ता", "फोटो अपलोड"] }
+        ];
+
+        // --- DOM Elements ---
+        const allSections = document.querySelectorAll('section');
+        const header = document.querySelector('header');
+        const authModal = document.getElementById('auth-modal');
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const biodataFormEl = document.getElementById('biodata-form');
+        const stepIndicatorEl = document.getElementById('step-indicator');
+        const prevStepBtn = document.getElementById('prev-step-btn');
+        const nextStepBtn = document.getElementById('next-step-btn');
+        const finishBtn = document.getElementById('finish-btn');
+        const saveUpdateBtn = document.getElementById('save-update-btn');
+
+
+        // --- Utility Functions ---
+        function showToast(message, isSuccess = true) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.backgroundColor = isSuccess ? 'var(--success-color)' : 'var(--danger-color)';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 5000); // Increased timeout for better visibility
+        }
+
+        function showLoader() { document.getElementById('loader').classList.remove('hidden'); }
+        function hideLoader() { document.getElementById('loader').classList.add('hidden'); }
+
+        function showSection(sectionId) {
+            allSections.forEach(sec => sec.classList.add('hidden'));
+            document.getElementById(sectionId).classList.remove('hidden');
+            header.classList.toggle('hidden', sectionId === 'landing-section');
+        }
+
+
+        // --- Navigation ---
+        function showAuth(form) {
+            authModal.classList.remove('hidden');
+            toggleAuthForm(form);
+        }
+        function hideAuth() { authModal.classList.add('hidden'); }
+        function toggleAuthForm(form) {
+            if (form === 'login') {
+                loginForm.classList.remove('hidden');
+                signupForm.classList.add('hidden');
+            } else {
+                loginForm.classList.add('hidden');
+                signupForm.classList.remove('hidden');
+            }
+        }
+        function showDashboard() {
+            showSection('dashboard-section');
+            fetchUserBiodatas();
+        }
+        function showBiodataForm(isEditing = false) {
+            if (!isEditing) {
+                currentBiodataId = null;
+                formData = { 'आवडत्या-देवतेचे-नाव': 'श्री गणेशाय नमः', photoBase64: null };
+                if(document.getElementById('biodata-form')) {
+                    document.getElementById('biodata-form').reset();
+                }
+                const preview = document.getElementById('photo-preview');
+                if(preview) preview.src = "";
+                selectedTemplate = '';
+                selectedTemplateUrl = '';
+            }
+            buildForm();
+            currentStep = 0;
+            displayStep(currentStep);
+            showSection('biodata-form-section');
+            
+            if (isEditing) {
+                saveUpdateBtn.innerHTML = '<i class="fas fa-sync-alt"></i> बायोडाटा अपडेट करा';
+            } else {
+                saveUpdateBtn.innerHTML = '<i class="fas fa-save"></i> बायोडाटा जतन करा';
+            }
+        }
+        function showPreview() {
+            showSection('preview-section');
+            if (airtableTemplates.length === 0) {
+                fetchTemplatesFromAirtable();
+            } else {
+                renderAllTemplates();
+            }
+            renderPreview();
+        }
+
+
+        // --- Authentication ---
+        auth.onAuthStateChanged(user => {
+            hideLoader();
+            if (user) {
+                currentUser = user;
+                document.getElementById('user-email').textContent = user.email;
+                showDashboard();
+                fetchTemplatesFromAirtable();
+            } else {
+                currentUser = null;
+                showSection('landing-section');
+            }
+        });
+
+        function togglePasswordVisibility(fieldId) {
+            const input = document.getElementById(fieldId);
+            const icon = input.nextElementSibling;
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = "password";
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        function signupWithEmail() {
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const confirmPassword = document.getElementById('signup-confirm-password').value;
+
+            if (password !== confirmPassword) {
+                showToast("पासवर्ड जुळत नाहीत.", false);
+                return;
+            }
+            showLoader();
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(() => { hideAuth(); showToast("नोंदणी यशस्वी झाली!"); })
+                .catch(err => showToast(err.message, false))
+                .finally(hideLoader);
+        }
+
+        function loginWithEmail() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            showLoader();
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => { hideAuth(); showToast("लॉगिन यशस्वी झाले!"); })
+                .catch(err => showToast(err.message, false))
+                .finally(hideLoader);
+        }
+
+        function loginWithGoogle() {
+            showLoader();
+            auth.signInWithPopup(googleProvider)
+                .then(() => { hideAuth(); showToast("Google लॉगिन यशस्वी झाले!"); })
+                .catch(err => {
+                    showToast(`Google लॉगिन अयशस्वी: ${err.message}`, false);
+                    console.error("Google Sign-In Error:", err);
+                })
+                .finally(hideLoader);
+        }
+
+        function logout() {
+            auth.signOut().then(() => showToast("तुम्ही लॉगआउट झाला आहात."));
+        }
+        document.getElementById('logout-btn').addEventListener('click', logout);
+
+
+        // --- Biodata Form Logic ---
+        function buildForm() {
+            let html = '';
+            let indicatorHtml = '';
+            const rashiOptions = ["मेष", "वृषभ", "मिथुन", "कर्क", "सिंह", "कन्या", "तूळ", "वृश्चिक", "धनु", "मकर", "कुंभ", "मीन"];
+
+            formSteps.forEach((step, index) => {
+                indicatorHtml += `<div class="step" data-step="${index}">${step.name}</div>`;
+                html += `<div class="form-step" data-step="${index}"><h3>${step.name}</h3>`;
+                step.fields.forEach(field => {
+                    const fieldId = field.replace(/[\s\/\(\)]+/g, '-');
+                    html += `<div class="form-group">
+ <label for="${fieldId}">${field}${optionalFields.includes(field) ? ' (ऐच्छिक)' : ''}</label>`;
+                    
+                    if (field === "फोटो अपलोड") {
+                        html += '<div id="photo-upload-area"><i class="fas fa-cloud-upload-alt"></i> फोटो अपलोड करण्यासाठी क्लिक करा</div>';
+                        html += '<input type="file" id="photo-input" class="hidden" accept="image/*">';
+                        html += '<img id="photo-preview" class="hidden"/>';
+                        html += '<div id="upload-progress"></div>';
+                    } else if (field === "जन्मतारीख") {
+                        html += `<input type="date" id="${fieldId}" name="${fieldId}">`;
+                    } else if (field === "राशी") {
+                        html += `<select id="${fieldId}" name="${fieldId}">`;
+                        rashiOptions.forEach(r => html += `<option value="${r}">${r}</option>`);
+                        html += `</select>`;
+                    } else {
+                        html += `<input type="text" id="${fieldId}" name="${fieldId}">`;
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
+            });
+            biodataFormEl.innerHTML = html;
+            stepIndicatorEl.innerHTML = indicatorHtml;
+
+            document.getElementById('photo-upload-area').addEventListener('click', () => document.getElementById('photo-input').click());
+            document.getElementById('photo-input').addEventListener('change', handlePhotoUpload);
+
+            for (const key in formData) {
+                const el = document.getElementById(key.replace(/[\s\/\(\)]+/g, '-'));
+                if (el) el.value = formData[key];
+            }
+            if(formData.photoBase64) {
+                const preview = document.getElementById('photo-preview');
+                preview.src = formData.photoBase64;
+                preview.classList.remove('hidden');
+            }
+        }
+
+        function displayStep(stepIndex) {
+            document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+            document.querySelector(`.form-step[data-step="${stepIndex}"]`).classList.add('active');
+
+            document.querySelectorAll('#step-indicator .step').forEach(s => s.classList.remove('active'));
+            document.querySelector(`#step-indicator .step[data-step="${stepIndex}"]`).classList.add('active');
+
+            prevStepBtn.classList.toggle('hidden', stepIndex === 0);
+            nextStepBtn.classList.toggle('hidden', stepIndex === formSteps.length - 1);
+            finishBtn.classList.toggle('hidden', stepIndex !== formSteps.length - 1);
+        }
+
+        function navigateStep(direction) {
+            const currentStepFields = document.querySelector(`.form-step[data-step="${currentStep}"]`);
+            currentStepFields.querySelectorAll('input, select, textarea').forEach(input => {
+                formData[input.id] = input.value;
+            });
+
+            let isValid = true;
+            if (direction > 0) {
+                 formSteps[currentStep].fields.forEach(field => {
+                    const fieldId = field.replace(/[\s\/\(\)]+/g, '-');
+                    if (!optionalFields.includes(field) && field !== "फोटो अपलोड" && !formData[fieldId]) {
+                        isValid = false;
+                    }
+                 });
+                 if (!isValid) {
+                    showToast("कृपया सर्व अनिवार्य माहिती भरा.", false);
+                    return;
+                 }
+            }
+
+            currentStep += direction;
+            displayStep(currentStep);
+        }
+
+        function finishForm() {
+            const currentStepFields = document.querySelector(`.form-step[data-step="${currentStep}"]`);
+            currentStepFields.querySelectorAll('input, select, textarea').forEach(input => {
+                formData[input.id] = input.value;
+            });
+            showPreview();
+        }
+
+        // --- Photo Upload ---
+        function handlePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                formData.photoBase64 = e.target.result;
+                const preview = document.getElementById('photo-preview');
+                preview.src = e.target.result;
+                preview.classList.remove('hidden');
+                showToast("फोटो निवडला आहे.");
+                renderPreview();
+            };
+            reader.readAsDataURL(file);
+            
+            const uploadProgress = document.getElementById('upload-progress');
+            uploadProgress.classList.remove('hidden');
+            const storageRef = storage.ref(`biodata-photos/${currentUser.uid}/${Date.now()}-${file.name}`);
+            const uploadTask = storageRef.put(file);
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    uploadProgress.textContent = `अपलोड: ${Math.round(progress)}%`;
+                },
+                (error) => {
+                    showToast(`फोटो अपलोड अयशस्वी: ${error.code}`, false);
+                    uploadProgress.classList.add('hidden');
+                    console.error("Photo upload error:", error);
+                },
+                () => {
+                    uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                        formData.photoURL = downloadURL;
+                        uploadProgress.textContent = "अपलोड पूर्ण झाले!";
+                        setTimeout(() => uploadProgress.classList.add('hidden'), 2000);
+                    });
+                }
+            );
+        }
+
+        // --- Template and Preview ---
+        async function fetchTemplatesFromAirtable() {
+            if (airtableTemplates.length > 0) {
+                renderAllTemplates();
+                return;
+            }
+            showLoader();
+            try {
+                const response = await fetch(`https://api.airtable.com/v0/${airtableBaseId}/${airtableTableName}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${airtableApiKey}`,
+                        },
+                    }
+                );
+                if (!response.ok) {
+                    throw new Error(`Airtable request failed: ${response.status}`);
+                }
+                const data = await response.json();
+                airtableTemplates = data.records.filter(record => record.fields.Attachments).map(record => ({
+                    id: record.id,
+                    name: record.fields.Name,
+                    url: record.fields.Attachments[0].url,
+                    thumb: record.fields.Attachments[0].thumbnails.large.url
+                }));
+                renderAllTemplates();
+            } catch (error) {
+                console.error("Error fetching templates from Airtable:", error);
+                showToast(`टेम्पलेट लोड करण्यात अयशस्वी: ${error.message}`, false);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function renderAllTemplates() {
+            const gallery = document.getElementById('template-gallery');
+            if (!gallery) return;
+            gallery.innerHTML = airtableTemplates.map(t => `
+                <div class="template-thumbnail ${t.id === selectedTemplate ? 'selected' : ''}" onclick="selectTemplate('${t.id}', '${t.url}')">
+                    <img data-src="${t.thumb}" src="${t.thumb}" alt="${t.name}" class="lazyload">
+                    <p>${t.name}</p>
+                </div>
+            `).join('');
+        }
+
+        function selectTemplate(templateId, templateUrl) {
+            selectedTemplate = templateId;
+            selectedTemplateUrl = templateUrl;
+            document.querySelectorAll('.template-thumbnail').forEach(t => t.classList.remove('selected'));
+            const selectedEl = document.querySelector(`.template-thumbnail[onclick^="selectTemplate('${templateId}'"]`);
+            if (selectedEl) {
+                selectedEl.classList.add('selected');
+            }
+            renderPreview();
+        }
+
+        function renderPreview() {
+            const previewContent = document.getElementById('biodata-preview-content');
+            previewContent.style.backgroundImage = selectedTemplateUrl ? `url(${selectedTemplateUrl})` : 'none';
+            const data = { ...formData };
+            const photo = data.photoBase64 ? `<img src="${data.photoBase64}" crossOrigin="anonymous" style="display: block; margin: 0 auto 1rem; max-width: 150px; border-radius: 5px; border: 3px solid var(--primary-color);">` : '';
+            const deityName = data['आवडत्या-देवतेचे-नाव'] || 'श्री गणेशाय नमः';
+
+            let html = `
+                <div class="overlay" style="text-align: center;">
+                    <h1 style="text-align:center; color: #8C3B00; font-family: 'Tiro Devanagari Marathi', serif; font-size: 1.2rem;">|| ${deityName} ||</h1>
+                    ${photo}
+                    <h2 style="background: #D1A054; color: white; padding: 5px; text-align:center;">वैयक्तिक माहिती</h2>
+                    <p style="text-align: center;"><strong>पूर्ण नाव:</strong> ${data['पूर्ण-नाव'] || ''}</p>
+                    <p style="text-align: center;"><strong>जन्मतारीख:</strong> ${data['जन्मतारीख'] || ''}</p>
+                    <p style="text-align: center;"><strong>उंची:</strong> ${data['उंची'] || ''}</p>
+                    <p style="text-align: center;"><strong>जन्मस्थळ:</strong> ${data['जन्मस्थळ'] || ''}</p>
+                    <p style="text-align: center;"><strong>गोत्र:</strong> ${data['गोत्र'] || ''}</p>
+                    <p style="text-align: center;"><strong>राशी:</strong> ${data['राशी'] || ''}</p>
+
+                    <h2 style="background: #D1A054; color: white; padding: 5px; text-align:center;">शिक्षण</h2>
+                    <p style="text-align: center;"><strong>शिक्षणाचा तपशील:</strong> ${data['शिक्षणाचा-तपशील'] || ''}</p>
+                    <p style="text-align: center;"><strong>पदवी:</strong> ${data['पदवी'] || ''}</p>
+                    <p style="text-align: center;"><strong>शाळा/कॉलेज नाव:</strong> ${data['शाळा/कॉलेज-नाव'] || ''}</p>
+
+                    <h2 style="background: #D1A054; color: white; padding: 5px; text-align:center;">व्यवसाय</h2>
+                    <p style="text-align: center;"><strong>नोकरी/व्यवसाय:</strong> ${data['नोकरी/व्यवसाय'] || ''}</p>
+
+                    <h2 style="background: #D1A054; color: white; padding: 5px; text-align:center;">कौटुंबिक माहिती</h2>
+                    <p style="text-align: center;"><strong>वडिलांचे नाव व व्यवसाय:</strong> ${data['वडिलांचे-नाव-व-व्यवसाय'] || ''}</p>
+                    <p style="text-align: center;"><strong>आईचे नाव:</strong> ${data['आईचे-नाव'] || ''}</p>
+                    <p style="text-align: center;"><strong>भावंडे (संख्या व तपशील):</strong> ${data['भावंडे-संख्या-व-तपशील'] || ''}</p>
+                    <p style="text-align: center;"><strong>मामेकूळ:</strong> ${data['मामेकूळ'] || ''}</p>
+
+                    <h2 style="background: #D1A054; color: white; padding: 5px; text-align:center;">संपर्क माहिती</h2>
+                    <p style="text-align: center;"><strong>मोबाइल/वॉट्सअप नंबर:</strong> ${data['मोबाइल/वॉट्सअप-नंबर'] || ''}</p>
+                    <p style="text-align: center;"><strong>पत्ता:</strong> ${data['पत्ता'] || ''}</p>
+                </div>
+            `;
+            previewContent.innerHTML = html;
+        }
+
+
+        // --- Download and Share ---
+        function downloadAsImage() {
+            showLoader();
+            const node = document.getElementById('biodata-preview-content');
+            html2canvas(node, {
+                scale: 2,
+                useCORS: true,
+                width: 800, // A reasonable width for mobile
+                windowWidth: 800
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'biodata.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                hideLoader();
+                showToast("इमेज डाउनलोड झाली आहे.");
+            }).catch(err => {
+                hideLoader();
+                console.error(err);
+                showToast("इमेज डाउनलोड करण्यात अयशस्वी.", false);
+            });
+        }
+
+        function downloadAsPDF() {
+            showLoader();
+            const { jsPDF } = window.jspdf;
+            const node = document.getElementById('biodata-preview-content');
+            html2canvas(node, {
+                scale: 2,
+                useCORS: true,
+                width: 800,
+                windowWidth: 800
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                const ratio = canvasWidth / canvasHeight;
+                let imgWidth = pdfWidth - 20;
+                let imgHeight = imgWidth / ratio;
+                if (imgHeight > pdfHeight - 20) {
+                    imgHeight = pdfHeight - 20;
+                    imgWidth = imgHeight * ratio;
+                }
+                
+                let positionX = (pdfWidth - imgWidth) / 2;
+                let positionY = 10;
+
+                pdf.addImage(imgData, 'PNG', positionX, positionY, imgWidth, imgHeight);
+                pdf.save("biodata.pdf");
+                hideLoader();
+                showToast("PDF डाउनलोड झाली आहे.");
+            }).catch(err => {
+                hideLoader();
+                console.error(err);
+                showToast("PDF डाउनलोड करण्यात अयशस्वी.", false);
+            });
+        }
+
+        function shareOnWhatsApp() {
+            let text = `*माझा विवाह बायोडाटा*\n\n`;
+            text += `*नाव:* ${formData['पूर्ण-नाव'] || ''}\n`;
+            text += `*जन्मतारीख:* ${formData['जन्मतारीख'] || ''}\n`;
+            text += `*उंची:* ${formData['उंची'] || ''}\n`;
+            text += `*शिक्षण:* ${formData['शिक्षणाचा-तपशील'] || ''}\n`;
+            text += `*नोकरी/व्यवसाय:* ${formData['नोकरी/व्यवसाय'] || ''}\n\n`;
+            text += `अधिक माहितीसाठी, कृपया बायोडाटा इमेज पहा.`;
+
+            const encodedText = encodeURIComponent(text);
+            const waLink = `https://wa.me/?text=${encodedText}`;
+            
+            showToast("WhatsApp वर शेअर करण्यासाठी, कृपया प्रथम इमेज डाउनलोड करा आणि नंतर ती शेअर करा.");
+            window.open(waLink, '_blank');
+        }
+
+
+        // --- Firestore Data Management ---
+        function saveBiodata() {
+            if (!currentUser) {
+                showToast("कृपया प्रथम लॉगिन करा.", false);
+                return;
+            }
+            showLoader();
+            const biodataToSave = {
+                ...formData,
+                userId: currentUser.uid,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                templateId: selectedTemplate,
+                templateUrl: selectedTemplateUrl
+            };
+
+            if (currentBiodataId) {
+                // Update existing biodata
+                db.collection('biodatas').doc(currentBiodataId).update(biodataToSave)
+                    .then(() => { 
+                        showToast("बायोडाटा यशस्वीरित्या अपडेट झाला."); 
+                        fetchUserBiodatas();
+                        showDashboard();
+                    })
+                    .catch(err => showToast(err.message, false))
+                    .finally(hideLoader);
+            } else {
+                // Save new biodata
+                biodataToSave.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                db.collection('biodatas').add(biodataToSave)
+                    .then((docRef) => {
+                        currentBiodataId = docRef.id;
+                        showToast("बायोडाटा यशस्वीरित्या जतन झाला.");
+                        fetchUserBiodatas();
+                        showDashboard();
+                    })
+                    .catch(err => showToast(err.message, false))
+                    .finally(hideLoader);
+            }
+        }
+
+        function fetchUserBiodatas() {
+            if (!currentUser) return;
+            showLoader();
+            db.collection('biodatas').where("userId", "==", currentUser.uid).orderBy("updatedAt", "desc").get()
+                .then(querySnapshot => {
+                    const listEl = document.getElementById('biodatas-list');
+                    if (querySnapshot.empty) {
+                        listEl.innerHTML = "<p>तुम्ही अद्याप कोणताही बायोडाटा तयार केलेला नाही.</p>";
+                        return;
+                    }
+                    let html = '';
+                    querySnapshot.forEach(doc => {
+                        const data = doc.data();
+                        html += `
+                            <div class="biodata-card">
+                                <h4>${data['पूर्ण-नाव'] || 'Untitled'}</h4>
+                                <p> तयार केले: ${data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</p>
+                                <p> अपडेट केले: ${data.updatedAt ? new Date(data.updatedAt.seconds * 1000).toLocaleDateString() : 'N/A'}</p>
+                                <button class="btn btn-sm btn-primary" onclick="editBiodata('${doc.id}')"><i class="fas fa-edit"></i> संपादित करा</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteBiodata('${doc.id}')"><i class="fas fa-trash"></i> हटवा</button>
+                            </div>
+                        `;
+                    });
+                    listEl.innerHTML = html;
+                })
+                .catch(err => showToast(err.message, false))
+                .finally(hideLoader);
+        }
+
+        function editBiodata(docId) {
+            showLoader();
+            db.collection('biodatas').doc(docId).get().then(doc => {
+                if (doc.exists) {
+                    formData = doc.data();
+                    currentBiodataId = doc.id;
+                    selectedTemplate = formData.templateId || '';
+                    selectedTemplateUrl = formData.templateUrl || '';
+                    showBiodataForm(true);
+                } else {
+                    showToast("बायोडाटा आढळला नाही.", false);
+                }
+            }).catch(err => showToast(err.message, false)).finally(hideLoader);
+        }
+
+        function deleteBiodata(docId) {
+            if (confirm("तुम्हाला खात्री आहे की तुम्ही हा बायोडाटा हटवू इच्छita?")) {
+                showLoader();
+                db.collection('biodatas').doc(docId).delete()
+                    .then(() => {
+                        showToast("बायोडाटा हटवला.");
+                        fetchUserBiodatas();
+                    })
+                    .catch(err => showToast(err.message, false))
+                    .finally(hideLoader);
+            }
+        }
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            showLoader(); // Show loader until auth state is confirmed
+        });
+
+    </script>
+</body>
+</html>
